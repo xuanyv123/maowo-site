@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>毛窝 · Furry兽圈交流群</title>
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root {
   --amber: #D4843E;
@@ -322,12 +322,12 @@ button { font-family:inherit; cursor:pointer; }
 .upload-preview img { max-width:200px; max-height:200px; border-radius:10px; margin-bottom:8px; }
 #fileInput { display:none; }
 
-/* 加载动画 */
+/* 加载动画（默认隐藏，仅JS主动显示时出现） */
 .loading {
   position:fixed; inset:0; z-index:500; background:var(--cream);
-  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:16px;
+  display:none; flex-direction:column; align-items:center; justify-content:center; gap:16px;
 }
-.loading.hidden { display:none; }
+.loading.show { display:flex; }
 .spinner {
   width:40px; height:40px; border:4px solid var(--cream-dark);
   border-top-color:var(--amber); border-radius:50%; animation:spin .8s linear infinite;
@@ -479,15 +479,35 @@ button { font-family:inherit; cursor:pointer; }
     <div class="rules-grid">
       <div class="rule-card">
         <h3>交流环境</h3>
-        <ul id="rulesEnvList"></ul>
+        <ul id="rulesEnvList">
+          <li>文明友善，禁止辱骂、人身攻击、引战抬杠</li>
+          <li>尊重所有人的 OC、兽设、审美与创作</li>
+          <li>禁止刷屏、大量连图、无意义表情包轰炸</li>
+          <li>未经申请不得私发广告、外链、其他群宣传</li>
+          <li>观点分歧请友好沟通，矛盾找管理员介入</li>
+        </ul>
       </div>
       <div class="rule-card">
         <h3>权益保护</h3>
-        <ul id="rulesRightsList"></ul>
+        <ul id="rulesRightsList">
+          <li>原创作品版权归作者所有，禁止未经同意盗用</li>
+          <li>禁止二次修改、转发、商用他人画作/OC</li>
+          <li>严禁收集、外传群员照片、QQ号、真实信息</li>
+          <li>禁止开盒、扒皮、泄露他人三次元隐私</li>
+          <li>禁止抄袭、描图、盗设，发现可举报</li>
+          <li>交易属个人行为，建议走平台担保防骗</li>
+        </ul>
       </div>
       <div class="rule-card">
         <h3>安全红线</h3>
-        <ul id="rulesSafetyList"></ul>
+        <ul id="rulesSafetyList">
+          <li>遵守法律法规，禁止传播色情、血腥、违法内容</li>
+          <li>禁止涉政言论、传播谣言与虚假信息</li>
+          <li>禁止诱导未成年人大额交易、私下见面</li>
+          <li>不发病毒链接、钓鱼网站、恶意代码</li>
+          <li>禁止骚扰他人，对方拒绝后不得继续纠缠</li>
+          <li>线下面基请选公共场所，注意人身安全</li>
+        </ul>
       </div>
     </div>
   </div>
@@ -501,7 +521,12 @@ button { font-family:inherit; cursor:pointer; }
       <h2 class="section-title">照片墙</h2>
       <p class="section-desc">群内小伙伴的兽设、绘画与日常分享</p>
     </div>
-    <div class="gallery-grid" id="galleryGrid"></div>
+    <div class="gallery-grid" id="galleryGrid">
+      <div class="gallery-empty">
+        <svg><use href="#camera"/></svg>
+        <p>照片持续更新中，入群后可分享你的兽设与作品，敬请期待～</p>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -548,7 +573,28 @@ button { font-family:inherit; cursor:pointer; }
       <h2 class="section-title">加入毛窝</h2>
       <p class="section-desc">只需简单几步，就能成为我们的一员</p>
     </div>
-    <div class="steps" id="joinSteps"></div>
+    <div class="steps" id="joinSteps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <h4>复制群号</h4>
+        <p>在联系方式区域获取QQ群号</p>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <h4>搜索申请</h4>
+        <p>打开QQ搜索群号，点击申请加入</p>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <h4>填写验证</h4>
+        <p>注明来意，阅读并同意群规条款</p>
+      </div>
+      <div class="step">
+        <div class="step-num">4</div>
+        <h4>欢迎入群</h4>
+        <p>管理员审核通过，正式成为一员</p>
+      </div>
+    </div>
     <div class="join-cta">
       <a href="#contact" class="btn btn-primary">
         <svg style="width:18px;height:18px;fill:currentColor"><use href="#paw"/></svg>获取群号加入
@@ -706,7 +752,9 @@ const SUPABASE_URL = 'https://jbjjjtuecyfepempvogp.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_f_sKTjyo6EodJDRKdma2Rw_KKux0WGN';
 /* ======================================== */
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = (window.supabase && window.supabase.createClient)
+  ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
 let currentContent = null;
 let selectedFile = null;
@@ -728,19 +776,33 @@ const DEFAULT_CONTENT = {
 };
 
 /* ===== 初始化加载 ===== */
+function withTimeout(promise, ms) {
+  return Promise.race([
+    promise,
+    new Promise(resolve => setTimeout(() => resolve({ __timeout: true }), ms))
+  ]);
+}
+
 async function init() {
-  try {
-    await loadContent();
-    await loadPhotos();
-    checkSession();
-  } catch(e) {
-    console.error('初始化失败:', e);
+  // 默认内容已直接写在HTML中，无论下面是否成功，页面都能正常显示
+  if (!supabase) {
+    console.warn('Supabase 库未加载，使用内置默认内容（后台管理不可用）');
+    return;
   }
-  document.getElementById('loading').classList.add('hidden');
+  try {
+    const contentResult = await withTimeout(loadContent(), 5000);
+    if (contentResult && contentResult.__timeout) {
+      console.warn('连接数据库超时，使用默认内容');
+    }
+    await withTimeout(loadPhotos(), 5000);
+  } catch(e) {
+    console.error('初始化失败，使用默认内容:', e);
+  }
 }
 
 /* 加载网站内容 */
 async function loadContent() {
+  if (!supabase) return { __timeout: true };
   const { data, error } = await supabase
     .from('site_content')
     .select('*')
@@ -797,6 +859,7 @@ function renderSteps(text) {
 
 /* 加载照片 */
 async function loadPhotos() {
+  if (!supabase) return { __timeout: true };
   const { data, error } = await supabase
     .from('photos')
     .select('*')
@@ -859,13 +922,30 @@ async function doLogin() {
   const password = document.getElementById('loginPassword').value;
   const errEl = document.getElementById('loginError');
 
+  if (!supabase) {
+    errEl.textContent = '后台服务未加载（网络CDN被拦截），请更换网络或浏览器后重试';
+    errEl.classList.add('show');
+    return;
+  }
+
   if (!email || !password) {
     errEl.textContent = '请输入邮箱和密码';
     errEl.classList.add('show');
     return;
   }
 
-  const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+  const result = await withTimeout(
+    supabase.auth.signInWithPassword({ email, password }),
+    10000
+  );
+
+  if (result && result.__timeout) {
+    errEl.textContent = '连接服务器超时，请检查网络后重试';
+    errEl.classList.add('show');
+    return;
+  }
+
+  const { data, error } = result;
 
   if (error) {
     errEl.textContent = '登录失败：' + error.message;
@@ -878,6 +958,7 @@ async function doLogin() {
 }
 
 async function checkSession() {
+  if (!supabase) return;
   const { data: { session } } = await supabase.auth.getSession();
   if (session) {
     // 已登录但不自动打开后台，仅准备好

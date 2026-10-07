@@ -1093,7 +1093,7 @@ async function uploadPhoto() {
   showToast('上传中...', '');
 
   const { error: uploadError } = await supabase.storage
-    .from('photos')
+    .from('xuanyv')
     .upload(fileName, selectedFile);
 
   if (uploadError) {
@@ -1102,7 +1102,7 @@ async function uploadPhoto() {
   }
 
   const { data: urlData } = supabase.storage
-    .from('photos')
+    .from('xuanyv')
     .getPublicUrl(fileName);
 
   const { error: dbError } = await supabase
@@ -1132,7 +1132,7 @@ async function deletePhoto(id, url) {
   const fileName = url.split('/').slice(-2).join('/').split('?')[0];
 
   const { error: storageError } = await supabase.storage
-    .from('photos')
+    .from('xuanyv')
     .remove([fileName.split('/').pop()]);
 
   const { error: dbError } = await supabase

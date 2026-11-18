@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>もちほっぺ・メーカー | 软糯捏脸生成器</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    width: 100%; height: 100%;
+    background: #ffd6e8;
+    font-family: -apple-system, "Hiragino Sans", "Yu Gothic", "Microsoft YaHei", sans-serif;
+    overflow: hidden;
+    touch-action: none;
+    user-select: none;
+  }
+  .topbar {
+    position: fixed; top: 0; left: 0; right: 0;
+    height: 28px;
+    background: linear-gradient(90deg, #ffb3d9, #ffc2e0, #ffb3d9);
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 0 12px;
+    font-size: 11px; color: #fff; font-weight: bold;
+    z-index: 10;
+  }
+  .topbar .dot { width: 14px; height: 14px; border-radius: 50%; background: #ff8fc7; display: inline-block; margin-right: 6px; vertical-align: middle; }
+  .app {
+    position: absolute; top: 28px; bottom: 0; left: 0; right: 0;
+    display: flex; flex-direction: column;
+    padding: 10px;
+  }
+  .title {
+    text-align: center;
+    color: #ff6fb5;
+    font-size: 18px; font-weight: bold;
+    margin-bottom: 8px;
+    text-shadow: 0 1px 0 #fff;
+    letter-spacing: 1px;
+  }
+  .steps {
+    display: flex; justify-content: center; gap: 20px;
+    margin-bottom: 10px;
+    font-size: 13px;
+  }
+  .step { color: #ffb3d9; font-weight: bold; }
+  .step.active { color: #fff; }
+  .step.active .num {
+    background: #ff8fc7; border-radius: 50%;
+    padding: 2px 8px; margin-right: 4px;
+  }
+  .stage {
+    flex: 1; position: relative;
+    background: #fff0f6;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: inset 0 2px 8px rgba(255,143,199,0.2);
+  }
+  canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+  #displayCanvas { z-index: 1; }
+  #overlayCanvas { z-index: 3; pointer-events: none; }
+  .hint {
+    position: absolute; bottom: 14px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.92);
+    color: #ff6fb5;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 13px; font-weight: bold;
+    white-space: nowrap;
+    z-index: 5; pointer-events: none;
+    box-shadow: 0 2px 8px rgba(255,143,199,0.3);
+  }
+  .top-btns {
+    position: absolute; top: 10px; right: 10px;
+    display: flex; gap: 6px; z-index: 6;
+  }
+  .top-btn {
+    background: #fff;
+    border: 2px solid #ffb3d9;
+    color: #ff6fb5;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 12px; font-weight: bold;
+    cursor: pointer;
+  }
+  .top-btn:active { background: #ffd6e8; }
+  .brush-panel {
+    position: absolute; bottom: 56px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.96);
+    border-radius: 14px;
+    padding: 10px;
+    display: none;
+    flex-direction: column; gap: 8px;
+    z-index: 6;
+    box-shadow: 0 4px 16px rgba(255,143,199,0.3);
+    width: 260px;
+  }
+  .brush-panel.show { display: flex; }
+  .brush-row {
+    display: flex; align-items: center; gap: 8px;
+    font-size: 12px; color: #ff6fb5; font-weight: bold;
+  }
+  .brush-row label { min-width: 56px; }
+  .brush-row input[type=range] { flex: 1; accent-color: #ff8fc7; }
+  .mode-btns { display: flex; gap: 6px; }
+  .mode-btn {
+    flex: 1;
+    border: 2px solid #ffb3d9;
+    background: #fff; color: #ff6fb5;
+    border-radius: 10px;
+    padding: 6px; font-size: 12px; font-weight: bold;
+    cursor: pointer;
+  }
+  .mode-btn.selected { background: #ff8fc7; color: #fff; }
+  .mode-btn.eraser.selected { background: #999; border-color: #999; }
+  .action-btns { display: flex; gap: 6px; margin-top: 4px; }
+  .action-btn {
+    flex: 1; border: none; border-radius: 10px;
+    padding: 8px; font-size: 13px; font-weight: bold;
+    cursor: pointer;
+  }
+  .action-btn.clear { background: #ffe0ef; color: #ff6fb5; }
+  .action-btn.go { background: #ff8fc7; color: #fff; }
+  .toolbar {
+    margin-top: 10px;
+    display: flex; justify-content: space-around;
+    background: #fff;
+    border-radius: 16px;
+    padding: 10px;
+    box-shadow: 0 2px 10px rgba(255,143,199,0.2);
+  }
+  .tool {
+    display: flex; flex-direction: column; align-items: center; gap: 2px;
+    cursor: pointer; color: #ffb3d9;
+    font-size: 11px; font-weight: bold;
+  }
+  .tool .icon {
+    width: 36px; height: 36px;
+    border-radius: 10px;
+    background: #fff0f6;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 18px;
+  }
+  .tool.active { color: #ff6fb5; }
+  .tool.active .icon { background: #ffd6e8; }
+  .upload-overlay {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    gap: 12px; z-index: 4; cursor: pointer;
+  }
+  .upload-overlay .big-icon {
+    font-size: 60px;
+    background: #fff;
+    border-radius: 50%;
+    width: 100px; height: 100px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 4px 16px rgba(255,143,199,0.3);
+  }
+  .upload-overlay p { color: #ff6fb5; font-size: 14px; font-weight: bold; }
+  .softness-panel {
+    position: absolute; bottom: 56px; left: 50%;
+    transform: translateX(-50%);
+    background: rgba(255,255,255,0.96);
+    border-radius: 14px;
+    padding: 10px;
+    display: none;
+    flex-direction: column; gap: 8px;
+    z-index: 6;
+    box-shadow: 0 4px 16px rgba(255,143,199,0.3);
+    width: 260px;
+  }
+  .softness-panel.show { display: flex; }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span><span class="dot"></span>あそび場にもどる</span>
+  <span>もちほっぺ・メーカー</span>
+</div>
+
+<div class="app">
+  <div class="title">もちほっぺ・メーカー</div>
+  <div class="steps">
+    <span class="step" id="step1"><span class="num">1</span>導入</span>
+    <span class="step active" id="step2"><span class="num">2</span>塗抹</span>
+    <span class="step" id="step3"><span class="num">3</span>開玩</span>
+  </div>
+
+  <div class="stage" id="stage">
+    <canvas id="displayCanvas"></canvas>
+    <canvas id="overlayCanvas"></canvas>
+
+    <div class="top-btns">
+      <button class="top-btn" id="resetZoomBtn">重置視圖</button>
+    </div>
+
+    <div class="upload-overlay" id="uploadOverlay">
+      <div class="big-icon">📷</div>
+      <p>点击上传一张图片开始捏脸~</p>
+    </div>
+
+    <div class="hint" id="hintText">涂抹想要变软的地方（双指缩放）</div>
+
+    <div class="brush-panel" id="brushPanel">
+      <div class="mode-btns">
+        <button class="mode-btn selected" data-tool="brush">✏️ 筆刷</button>
+        <button class="mode-btn eraser" data-tool="eraser">🧽 橡皮</button>
+      </div>
+      <div class="brush-row">
+        <label>大小</label>
+        <input type="range" id="brushSize" min="3" max="80" value="20">
+      </div>
+      <div class="action-btns">
+        <button class="action-btn clear" id="clearMask">全部軟糯</button>
+        <button class="action-btn go" id="goPlay">開玩！</button>
+      </div>
+    </div>
+
+    <div class="softness-panel" id="softnessPanel">
+      <div class="brush-row">
+        <label>拉扯力</label>
+        <input type="range" id="strength" min="0" max="100" value="50">
+      </div>
+      <div class="brush-row">
+        <label>Q彈度</label>
+        <input type="range" id="bounciness" min="0" max="100" value="60">
+      </div>
+      <div class="brush-row">
+        <label>筆刷</label>
+        <input type="range" id="brushRadius" min="20" max="120" value="50">
+      </div>
+    </div>
+  </div>
+
+  <div class="toolbar">
+    <div class="tool" id="toolImage">
+      <div class="icon">🖼️</div><span>图片</span>
+    </div>
+    <div class="tool active" id="toolBrush">
+      <div class="icon">✏️</div><span>塗抹</span>
+    </div>
+    <div class="tool" id="toolSound">
+      <div class="icon">🔊</div><span>声音</span>
+    </div>
+    <div class="tool" id="toolPlay">
+      <div class="icon">⭕</div><span>录制</span>
+    </div>
+    <div class="tool" id="toolSettings">
+      <div class="icon">⚙️</div><span>设置</span>
+    </div>
+  </div>
+</div>
+
+<input type="file" id="fileInput" accept="image/*" style="display:none">
+
+<script>
+(function(){
+  const stage = document.getElementById('stage');
+  const displayCanvas = document.getElementById('displayCanvas');
+  const overlayCanvas = document.getElementById('overlayCanvas');
+  const dctx = displayCanvas.getContext('2d');
+  const octx = overlayCanvas.getContext('2d');
+  const uploadOverlay = document.getElementById('uploadOverlay');
+  const fileInput = document.getElementById('fileInput');
+  const hintText = document.getElementById('hintText');
+  const brushPanel = document.getElementById('brushPanel');
+  const softnessPanel = document.getElementById('softnessPanel');
+
+  let originalImage = null;
+  let displayWidth = 0, displayHeight = 0;
+  let imgW = 0, imgH = 0;  // 原图分辨率
+  let hasImage = false;
+  let mode = 'brush';
+  let brushTool = 'brush';
+  let isDrawing = false;
+  let lastX = 0, lastY = 0;
+  let brushSizeVal = 20;
+  let strengthVal = 0.5;
+  let brushRadiusVal = 50;
+  let bouncinessVal = 0.6;
+  let isPressing = false;
+  let lastPressX = 0, lastPressY = 0;
+
+  // 视图变换
+  let zoomScale = 1, offsetX = 0, offsetY = 0;
+  let baseScale = 1, baseX = 0, baseY = 0;
+  let twoFinger = false;
+  let lastTouchDist = 0;
+  let lastTouchMidX = 0, lastTouchMidY = 0;
+
+  // maskCanvas大小=原图大小，和图片永远对齐
+  const maskCanvas = document.createElement('canvas');
+  const mctx = maskCanvas.getContext('2d');
+  // 缓存的mask alpha（display尺寸），避免每帧getImageData
+  let maskAlpha = null;
+  // warp的bbox，只在这个范围内计算
+  let bbox = null; // {minX, minY, maxX, maxY}
+
+  // 位移场
+  let warpX = null, warpY = null;
+  let velX = null, velY = null;
+  let animating = false;
+  let rafId = null;
+
+  function resizeCanvases() {
+    const rect = stage.getBoundingClientRect();
+    const w = Math.floor(rect.width), h = Math.floor(rect.height);
+    displayCanvas.width = w; displayCanvas.height = h;
+    overlayCanvas.width = w; overlayCanvas.height = h;
+    displayWidth = w; displayHeight = h;
+    warpX = new Float32Array(w * h);
+    warpY = new Float32Array(w * h);
+    velX = new Float32Array(w * h);
+    velY = new Float32Array(w * h);
+    maskAlpha = new Uint8Array(w * h);
+    bbox = null;
+    if (originalImage && hasImage) {
+      fitImage();
+      refreshMaskAlpha();
+      renderAll();
+    }
+  }
+
+  function clearWarp() {
+    if (warpX) warpX.fill(0);
+    if (warpY) warpY.fill(0);
+    if (velX) velX.fill(0);
+    if (velY) velY.fill(0);
+    bbox = null;
+  }
+
+  // 把maskCanvas(原图大小)采样到display尺寸的maskAlpha数组
+  function refreshMaskAlpha() {
+    if (!maskAlpha || !hasImage) return;
+    maskAlpha.fill(0);
+    // 用一个临时canvas把mask缩放到display尺寸（保持透明背景）
+    const tmp = document.createElement('canvas');
+    tmp.width = displayWidth; tmp.height = displayHeight;
+    const tctx = tmp.getContext('2d');
+    // 不填充，保持透明；只drawImage maskCanvas
+    tctx.drawImage(maskCanvas, baseX, baseY, imgW*baseScale, imgH*baseScale);
+    const d = tctx.getImageData(0, 0, displayWidth, displayHeight).data;
+    for (let i = 0; i < displayWidth*displayHeight; i++) {
+      maskAlpha[i] = d[i*4+3];
+    }
+  }
+
+  function expandBBox(x, y, r) {
+    if (!bbox) { bbox = {minX: x-r, minY: y-r, maxX: x+r, maxY: y+r}; return; }
+    bbox.minX = Math.min(bbox.minX, x-r);
+    bbox.minY = Math.min(bbox.minY, y-r);
+    bbox.maxX = Math.max(bbox.maxX, x+r);
+    bbox.maxY = Math.max(bbox.maxY, y+r);
+  }
+
+  function fitImage() {
+    if (!originalImage) return;
+    imgW = originalImage.width;
+    imgH = originalImage.height;
+    baseScale = Math.min(displayWidth / imgW, displayHeight / imgH);
+    baseX = (displayWidth - imgW * baseScale) / 2;
+    baseY = (displayHeight - imgH * baseScale) / 2;
+    zoomScale = 1; offsetX = 0; offsetY = 0;
+  }
+
+  // 屏幕坐标 → 画布坐标（stage内部坐标）
+  function toCanvas(sx, sy) {
+    return {
+      x: (sx - displayWidth/2 - offsetX) / zoomScale + displayWidth/2,
+      y: (sy - displayHeight/2 - offsetY) / zoomScale + displayHeight/2
+    };
+  }
+
+  // 画布坐标 → 图片像素坐标（maskCanvas坐标系）
+  // 图片在画布上的位置：baseX, baseY, 大小 imgW*baseScale, imgH*baseScale
+  function canvasToImg(cx, cy) {
+    return {
+      x: (cx - baseX) / baseScale,
+      y: (cy - baseY) / baseScale
+    };
+  }
+
+  // 图片像素坐标 → 画布坐标
+  function imgToCanvas(ix, iy) {
+    return {
+      x: baseX + ix * baseScale,
+      y: baseY + iy * baseScale
+    };
+  }
+
+  function renderAll() {
+    if (!originalImage) return;
+    dctx.fillStyle = '#fff0f6';
+    dctx.fillRect(0, 0, displayWidth, displayHeight);
+    octx.clearRect(0, 0, displayWidth, displayHeight);
+    dctx.save();
+    dctx.translate(displayWidth/2 + offsetX, displayHeight/2 + offsetY);
+    dctx.scale(zoomScale, zoomScale);
+    dctx.translate(-displayWidth/2, -displayHeight/2);
+    // 画图片
+    dctx.drawImage(originalImage, baseX, baseY, imgW*baseScale, imgH*baseScale);
+    // 画mask（和图片完全一样的位置和大小）
+    if (mode === 'brush') {
+      dctx.globalAlpha = 0.5;
+      dctx.drawImage(maskCanvas, baseX, baseY, imgW*baseScale, imgH*baseScale);
+      dctx.globalAlpha = 1;
+    }
+    dctx.restore();
+  }
+
+  uploadOverlay.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        originalImage = img;
+        hasImage = true;
+        // maskCanvas大小=原图大小
+        maskCanvas.width = img.width;
+        maskCanvas.height = img.height;
+        uploadOverlay.style.display = 'none';
+        resizeCanvases();
+        setBrushMode();
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+
+  function setBrushMode() {
+    mode = 'brush';
+    brushPanel.classList.add('show');
+    softnessPanel.classList.remove('show');
+    hintText.textContent = '塗抹軟區域，雙指縮放，可用橡皮';
+    document.getElementById('toolBrush').classList.add('active');
+    document.getElementById('toolPlay').classList.remove('active');
+    document.getElementById('step2').classList.add('active');
+    document.getElementById('step3').classList.remove('active');
+    stopAnim();
+    clearWarp();
+    renderAll();
+  }
+
+  function setPlayMode() {
+    mode = 'play';
+    brushPanel.classList.remove('show');
+    softnessPanel.classList.add('show');
+    fitImage();
+    refreshMaskAlpha();
+    // 检查mask是否有内容
+    let hasMask = false;
+    for (let i = 0; i < maskAlpha.length; i++) {
+      if (maskAlpha[i] > 30) { hasMask = true; break; }
+    }
+    hintText.textContent = hasMask ? '在塗抹處滑動拉扯，鬆手Q彈回彈~' : '請先去塗抹模式畫軟區域哦~';
+    document.getElementById('toolBrush').classList.remove('active');
+    document.getElementById('toolPlay').classList.add('active');
+    document.getElementById('step2').classList.remove('active');
+    document.getElementById('step3').classList.add('active');
+    clearWarp();
+    renderAll();
+  }
+
+  function getPos(e) {
+    const rect = displayCanvas.getBoundingClientRect();
+    const t = e.touches ? e.touches[0] : e;
+    return { x: t.clientX - rect.left, y: t.clientY - rect.top };
+  }
+
+  // 在maskCanvas上画（坐标是图片像素坐标）
+  function brushAt(ix, iy, size) {
+    const s = size / (baseScale * zoomScale);  // 笔刷屏幕大小固定
+    mctx.save();
+    if (brushTool === 'eraser') {
+      mctx.globalCompositeOperation = 'destination-out';
+      mctx.fillStyle = 'rgba(0,0,0,1)';
+    } else {
+      mctx.fillStyle = 'rgba(255, 100, 180, 0.75)';
+    }
+    mctx.beginPath();
+    mctx.arc(ix, iy, s, 0, Math.PI * 2);
+    mctx.fill();
+    mctx.restore();
+  }
+
+  function onDown(e) {
+    if (!hasImage) return;
+    e.preventDefault();
+    const touches = e.touches;
+    if (touches && touches.length === 2) {
+      twoFinger = true;
+      isDrawing = false;
+      isPressing = false;
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      lastTouchDist = Math.sqrt(dx*dx + dy*dy);
+      const rect = stage.getBoundingClientRect();
+      lastTouchMidX = (touches[0].clientX + touches[1].clientX)/2 - rect.left;
+      lastTouchMidY = (touches[0].clientY + touches[1].clientY)/2 - rect.top;
+      return;
+    }
+    const p = getPos(e);
+    const cp = toCanvas(p.x, p.y);
+    if (mode === 'brush') {
+      // 转成图片像素坐标
+      const ip = canvasToImg(cp.x, cp.y);
+      if (ip.x < 0 || ip.x > imgW || ip.y < 0 || ip.y > imgH) return;
+      isDrawing = true;
+      lastX = ip.x; lastY = ip.y;
+      brushAt(ip.x, ip.y, brushSizeVal);
+      refreshMaskAlpha();
+      renderAll();
+    } else if (mode === 'play') {
+      // 检查是否在涂抹区域内（用缓存的maskAlpha）
+      const idx = Math.floor(cp.y) * displayWidth + Math.floor(cp.x);
+      if (maskAlpha[idx] < 30) return;
+      stopAnim();
+      isPressing = true;
+      lastPressX = cp.x; lastPressY = cp.y;
+    }
+  }
+
+  function onMove(e) {
+    if (!hasImage) return;
+    e.preventDefault();
+    const touches = e.touches;
+    if (twoFinger && touches && touches.length === 2) {
+      const rect = stage.getBoundingClientRect();
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const midX = (touches[0].clientX + touches[1].clientX)/2 - rect.left;
+      const midY = (touches[0].clientY + touches[1].clientY)/2 - rect.top;
+      const scaleDelta = dist / lastTouchDist;
+      zoomScale *= scaleDelta;
+      zoomScale = Math.max(1, Math.min(6, zoomScale));
+      offsetX += midX - lastTouchMidX;
+      offsetY += midY - lastTouchMidY;
+      lastTouchDist = dist;
+      lastTouchMidX = midX; lastTouchMidY = midY;
+      refreshMaskAlpha();
+      renderAll();
+      return;
+    }
+    const p = getPos(e);
+    const cp = toCanvas(p.x, p.y);
+    if (mode === 'brush' && isDrawing) {
+      const ip = canvasToImg(cp.x, cp.y);
+      if (ip.x < 0 || ip.x > imgW || ip.y < 0 || ip.y > imgH) return;
+      const dx = ip.x - lastX, dy = ip.y - lastY;
+      const dist = Math.sqrt(dx*dx + dy*dy);
+      const steps = Math.max(1, Math.floor(dist / (brushSizeVal/(baseScale*zoomScale)/3)));
+      for (let i = 0; i <= steps; i++) {
+        brushAt(lastX + dx*i/steps, lastY + dy*i/steps, brushSizeVal);
+      }
+      lastX = ip.x; lastY = ip.y;
+      refreshMaskAlpha();
+      renderAll();
+    } else if (mode === 'play' && isPressing) {
+      const dx = cp.x - lastPressX;
+      const dy = cp.y - lastPressY;
+      applyWarp(cp.x, cp.y, dx, dy);
+      lastPressX = cp.x; lastPressY = cp.y;
+      renderWarp();
+    }
+  }
+
+  function onUp(e) {
+    if (e.touches && e.touches.length === 0) twoFinger = false;
+    isDrawing = false;
+    if (mode === 'play' && isPressing) {
+      isPressing = false;
+      startSpringAnim();
+    }
+  }
+
+  displayCanvas.addEventListener('mousedown', onDown);
+  displayCanvas.addEventListener('mousemove', onMove);
+  window.addEventListener('mouseup', onUp);
+  displayCanvas.addEventListener('touchstart', onDown, { passive: false });
+  displayCanvas.addEventListener('touchmove', onMove, { passive: false });
+  window.addEventListener('touchend', onUp);
+
+  // 位移场在画布坐标系（stage坐标）
+  function applyWarp(cx, cy, dx, dy) {
+    const w = displayWidth, h = displayHeight;
+    const r = brushRadiusVal;
+    const s = strengthVal * 0.6;
+    const x0 = Math.max(0, Math.floor(cx-r));
+    const x1 = Math.min(w-1, Math.ceil(cx+r));
+    const y0 = Math.max(0, Math.floor(cy-r));
+    const y1 = Math.min(h-1, Math.ceil(cy+r));
+    expandBBox(cx, cy, r + Math.abs(dx) + Math.abs(dy));
+    for (let y = y0; y <= y1; y++) {
+      for (let x = x0; x <= x1; x++) {
+        if (maskAlpha[y*w+x] < 30) continue;
+        const ddx = x-cx, ddy = y-cy;
+        const dist = Math.sqrt(ddx*ddx+ddy*ddy);
+        if (dist > r) continue;
+        const t = 1 - dist/r;
+        const falloff = t*t;
+        const idx = y*w+x;
+        warpX[idx] += dx * falloff * s;
+        warpY[idx] += dy * falloff * s;
+        velX[idx] = dx * falloff * s;
+        velY[idx] = dy * falloff * s;
+      }
+    }
+  }
+
+  function startSpringAnim() {
+    if (animating) return;
+    animating = true;
+    const k = 0.15;
+    const c = 0.25 - bouncinessVal * 0.15;
+    const w = displayWidth, h = displayHeight;
+    function step() {
+      let maxMotion = 0;
+      if (bbox) {
+        const x0 = Math.max(0, Math.floor(bbox.minX));
+        const x1 = Math.min(w-1, Math.ceil(bbox.maxX));
+        const y0 = Math.max(0, Math.floor(bbox.minY));
+        const y1 = Math.min(h-1, Math.ceil(bbox.maxY));
+        for (let y = y0; y <= y1; y++) {
+          for (let x = x0; x <= x1; x++) {
+            const i = y*w+x;
+            if (warpX[i] === 0 && velX[i] === 0 && warpY[i] === 0 && velY[i] === 0) continue;
+            velX[i] += (-k * warpX[i] - c * velX[i]);
+            velY[i] += (-k * warpY[i] - c * velY[i]);
+            warpX[i] += velX[i];
+            warpY[i] += velY[i];
+            if (Math.abs(warpX[i]) < 0.05 && Math.abs(velX[i]) < 0.05) { warpX[i]=0; velX[i]=0; }
+            if (Math.abs(warpY[i]) < 0.05 && Math.abs(velY[i]) < 0.05) { warpY[i]=0; velY[i]=0; }
+            maxMotion = Math.max(maxMotion, Math.abs(warpX[i]), Math.abs(warpY[i]));
+          }
+        }
+      }
+      renderWarp();
+      if (maxMotion > 0.05) {
+        rafId = requestAnimationFrame(step);
+      } else {
+        clearWarp();
+        renderAll();
+        animating = false;
+      }
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  function stopAnim() {
+    animating = false;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+  }
+
+  function renderWarp() {
+    if (!hasImage) return;
+    renderAll();
+    const w = displayWidth, h = displayHeight;
+    const base = dctx.getImageData(0, 0, w, h);
+    const out = dctx.createImageData(w, h);
+    out.data.set(base.data);
+
+    const bx0 = bbox ? Math.max(0, Math.floor(bbox.minX)) : 0;
+    const by0 = bbox ? Math.max(0, Math.floor(bbox.minY)) : 0;
+    const bx1 = bbox ? Math.min(w-1, Math.ceil(bbox.maxX)) : w-1;
+    const by1 = bbox ? Math.min(h-1, Math.ceil(bbox.maxY)) : h-1;
+
+    // 第一遍：涂抹区域内反向映射，连续变形
+    for (let y = by0; y <= by1; y++) {
+      for (let x = bx0; x <= bx1; x++) {
+        if (maskAlpha[y*w+x] < 30) continue;
+        const idx = y*w+x;
+        const wx = warpX[idx];
+        const wy = warpY[idx];
+        if (wx === 0 && wy === 0) continue;
+        const sx = x - wx;
+        const sy = y - wy;
+        if (sx < 0 || sx >= w-1 || sy < 0 || sy >= h-1) continue;
+        const x0 = Math.floor(sx), y0 = Math.floor(sy);
+        const fx = sx - x0, fy = sy - y0;
+        const i00 = (y0*w+x0)*4, i10 = (y0*w+x0+1)*4;
+        const i01 = ((y0+1)*w+x0)*4, i11 = ((y0+1)*w+x0+1)*4;
+        const oidx = idx*4;
+        out.data[oidx]   = base.data[i00]*(1-fx)*(1-fy) + base.data[i10]*fx*(1-fy) + base.data[i01]*(1-fx)*fy + base.data[i11]*fx*fy;
+        out.data[oidx+1] = base.data[i00+1]*(1-fx)*(1-fy) + base.data[i10+1]*fx*(1-fy) + base.data[i01+1]*(1-fx)*fy + base.data[i11+1]*fx*fy;
+        out.data[oidx+2] = base.data[i00+2]*(1-fx)*(1-fy) + base.data[i10+2]*fx*(1-fy) + base.data[i01+2]*(1-fx)*fy + base.data[i11+2]*fx*fy;
+      }
+    }
+    // 第二遍：正向映射，把拉出边界的内容完全覆盖在周围上面
+    const accR = new Float32Array(w*h);
+    const accG = new Float32Array(w*h);
+    const accB = new Float32Array(w*h);
+    const accA = new Float32Array(w*h);
+    for (let y = by0; y <= by1; y++) {
+      for (let x = bx0; x <= bx1; x++) {
+        if (maskAlpha[y*w+x] < 30) continue;
+        const idx = y*w+x;
+        const wx = warpX[idx];
+        const wy = warpY[idx];
+        if (wx === 0 && wy === 0) continue;
+        const nx = x + wx;
+        const ny = y + wy;
+        if (nx < 0 || nx >= w-1 || ny < 0 || ny >= h-1) continue;
+        const x0 = Math.floor(nx), y0 = Math.floor(ny);
+        const fx = nx - x0, fy = ny - y0;
+        const srcIdx = (y*w+x)*4;
+        const r = base.data[srcIdx], g = base.data[srcIdx+1], b = base.data[srcIdx+2];
+        const pts = [
+          [y0*w+x0, (1-fx)*(1-fy)],
+          [y0*w+x0+1, fx*(1-fy)],
+          [(y0+1)*w+x0, (1-fx)*fy],
+          [(y0+1)*w+x0+1, fx*fy]
+        ];
+        for (const [ti, weight] of pts) {
+          if (weight < 0.05) continue;
+          accR[ti] += r * weight;
+          accG[ti] += g * weight;
+          accB[ti] += b * weight;
+          accA[ti] += weight;
+        }
+      }
+    }
+    for (let i = 0; i < w*h; i++) {
+      if (accA[i] > 0.01) {
+        out.data[i*4]   = accR[i] / accA[i];
+        out.data[i*4+1] = accG[i] / accA[i];
+        out.data[i*4+2] = accB[i] / accA[i];
+      }
+    }
+    dctx.putImageData(out, 0, 0);
+  }
+
+  document.getElementById('toolImage').addEventListener('click', () => fileInput.click());
+  document.getElementById('toolBrush').addEventListener('click', () => {
+    if (!hasImage) { hintText.textContent = '请先上传图片哦~'; return; }
+    setBrushMode();
+  });
+  document.getElementById('toolPlay').addEventListener('click', () => {
+    if (!hasImage) { hintText.textContent = '请先上传图片哦~'; return; }
+    setPlayMode();
+  });
+  document.getElementById('toolSettings').addEventListener('click', () => {
+    if (!hasImage) return;
+    softnessPanel.classList.toggle('show');
+    brushPanel.classList.remove('show');
+  });
+  document.getElementById('toolSound').addEventListener('click', function(){
+    this.classList.toggle('active');
+  });
+
+  document.getElementById('brushSize').addEventListener('input', e => brushSizeVal = +e.target.value);
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
+      btn.classList.add('selected');
+      brushTool = btn.dataset.tool;
+    });
+  });
+  document.getElementById('clearMask').addEventListener('click', () => {
+    mctx.save();
+    mctx.fillStyle = 'rgba(255,100,180,0.75)';
+    mctx.fillRect(0, 0, imgW, imgH);
+    mctx.restore();
+    refreshMaskAlpha();
+    renderAll();
+  });
+  document.getElementById('goPlay').addEventListener('click', () => {
+    if (!hasImage) return;
+    setPlayMode();
+  });
+
+  document.getElementById('strength').addEventListener('input', e => strengthVal = e.target.value / 100);
+  document.getElementById('bounciness').addEventListener('input', e => bouncinessVal = e.target.value / 100);
+  document.getElementById('brushRadius').addEventListener('input', e => brushRadiusVal = +e.target.value);
+
+  document.getElementById('resetZoomBtn').addEventListener('click', () => {
+    stopAnim();
+    clearWarp();
+    fitImage();
+    renderAll();
+    hintText.textContent = '已重置視圖';
+  });
+
+  window.addEventListener('resize', () => {
+    stopAnim();
+    resizeCanvases();
+  });
+  resizeCanvases();
+})();
+</script>
+</body>
+</html>
